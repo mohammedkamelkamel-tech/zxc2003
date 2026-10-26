@@ -36,7 +36,9 @@ jobs:
         run: |
           set -e
           # Explicitly prioritize the latest user-approved project.
-          if [ -f "zxc2003-15_3-final-shop-list-icons.zip" ]; then
+          if [ -f "zxc2003-15_5-category-colored-inputs.zip" ]; then
+            ARCHIVE="zxc2003-15_5-category-colored-inputs.zip"
+          elif [ -f "zxc2003-15_3-final-shop-list-icons.zip" ]; then
             ARCHIVE="zxc2003-15_3-final-shop-list-icons.zip"
           elif [ -f "zxc2003-15_2-fingerprint-fix.zip" ]; then
             ARCHIVE="zxc2003-15_2-fingerprint-fix.zip"
