@@ -35,7 +35,12 @@ jobs:
       - name: Find and extract newest versioned project
         run: |
           set -e
-          ARCHIVE="$(find . -maxdepth 1 -type f -name 'zxc2003-*.zip' -printf '%f\n' | sort -V | tail -n 1)"
+          # Explicitly prioritize the latest user-approved project.
+          if [ -f "zxc2003-15_2-fingerprint-fix.zip" ]; then
+            ARCHIVE="zxc2003-15_2-fingerprint-fix.zip"
+          else
+            ARCHIVE="$(find . -maxdepth 1 -type f -name 'zxc2003-*.zip' ! -name '*-fingerprint-fix.zip' -printf '%f\n' | sort -V | tail -n 1)"
+          fi
           if [ -z "$ARCHIVE" ]; then
             echo "::error::No versioned project archive matching zxc2003-*.zip was found."
             exit 1
