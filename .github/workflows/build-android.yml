@@ -14,6 +14,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept SDK licenses and install required packages
+        run: |
+          set -e
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
       - name: Find and extract project
         run: |
           set -e
@@ -25,30 +36,17 @@ jobs:
           unzip -t "$ARCHIVE"
           mkdir -p extracted
           unzip -q "$ARCHIVE" -d extracted
-          if [ -f extracted/android_project/app/build.gradle ]; then
-            PROJECT_DIR="extracted/android_project"
-          elif [ -f extracted/source/android_project/app/build.gradle ]; then
-            PROJECT_DIR="extracted/source/android_project"
-          else
-            echo "Android project app/build.gradle not found in archive"
-            find extracted -maxdepth 5 -name build.gradle -print
-            exit 1
-          fi
+          PROJECT_BUILD="$(find extracted -path '*/app/build.gradle' -type f | head -n 1)"
+          test -n "$PROJECT_BUILD"
+          PROJECT_DIR="$(dirname "$(dirname "$PROJECT_BUILD")")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Android project: $PROJECT_DIR"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Install Android SDK packages
-        uses: android-actions/setup-android@v3
-
-      - name: Accept licenses and install SDK
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-33" "build-tools;33.0.2"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
