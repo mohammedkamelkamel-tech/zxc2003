@@ -35,12 +35,14 @@ jobs:
       - name: Find and extract latest project
         run: |
           set -e
-          ARCHIVE="zxc2003-11.zip"
+          ARCHIVE="zxc2003-15_2.zip"
           if [ ! -f "$ARCHIVE" ]; then
-            echo "::error::Latest project archive missing: $ARCHIVE. Refusing to build an older ZIP."
+            echo "::error::Expected latest project archive missing: $ARCHIVE"
+            echo "Available project archives:"
+            find . -maxdepth 1 -type f -name '*.zip' -printf '%f\n' | sort
             exit 1
           fi
-          echo "Building only from: $ARCHIVE"
+          echo "Building from latest uploaded project: $ARCHIVE"
           sha256sum "$ARCHIVE"
           unzip -t "$ARCHIVE"
           mkdir -p extracted
