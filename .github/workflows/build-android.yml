@@ -1,0 +1,53 @@
+name: Build AlKamel Distribution APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'al_kamel_distribution_project_modified.zip'
+      - '.github/workflows/build-android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify and extract project archive
+        run: |
+          set -e
+          test -f al_kamel_distribution_project_modified.zip
+          unzip -t al_kamel_distribution_project_modified.zip
+          mkdir -p source
+          unzip -q al_kamel_distribution_project_modified.zip -d source
+          test -f source/android_project/app/build.gradle
+          test -f source/android_project/settings.gradle
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-33" "build-tools;33.0.2"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '7.6.4'
+
+      - name: Build debug APK
+        working-directory: source/android_project
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: alkamel-distribution-debug-apk
+          path: source/android_project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
