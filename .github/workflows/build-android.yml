@@ -36,7 +36,9 @@ jobs:
         run: |
           set -e
           # Explicitly prioritize the latest user-approved project.
-          if [ -f "zxc2003-15_2-fingerprint-fix.zip" ]; then
+          if [ -f "zxc2003-15_3-final-shop-list-icons.zip" ]; then
+            ARCHIVE="zxc2003-15_3-final-shop-list-icons.zip"
+          elif [ -f "zxc2003-15_2-fingerprint-fix.zip" ]; then
             ARCHIVE="zxc2003-15_2-fingerprint-fix.zip"
           else
             ARCHIVE="$(find . -maxdepth 1 -type f -name 'zxc2003-*.zip' ! -name '*-fingerprint-fix.zip' -printf '%f\n' | sort -V | tail -n 1)"
