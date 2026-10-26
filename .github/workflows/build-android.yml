@@ -35,7 +35,7 @@ jobs:
       - name: Find and extract project
         run: |
           set -e
-          ARCHIVE="al_kamel_distribution_project_fixed_pdf.zip"
+          ARCHIVE="zxc2003_project_latest.zip"
           if [ ! -f "$ARCHIVE" ]; then
             echo "::error::Latest project archive missing: $ARCHIVE. Refusing to build an older ZIP."
             exit 1
