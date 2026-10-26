@@ -32,23 +32,24 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      - name: Find and extract latest project
+      - name: Find and extract newest versioned project
         run: |
           set -e
-          ARCHIVE="zxc2003-15_2.zip"
-          if [ ! -f "$ARCHIVE" ]; then
-            echo "::error::Expected latest project archive missing: $ARCHIVE"
-            echo "Available project archives:"
-            find . -maxdepth 1 -type f -name '*.zip' -printf '%f\n' | sort
+          ARCHIVE="$(find . -maxdepth 1 -type f -name 'zxc2003-*.zip' -printf '%f\n' | sort -V | tail -n 1)"
+          if [ -z "$ARCHIVE" ]; then
+            echo "::error::No versioned project archive matching zxc2003-*.zip was found."
             exit 1
           fi
-          echo "Building from latest uploaded project: $ARCHIVE"
+          echo "Selected newest versioned project archive: $ARCHIVE"
           sha256sum "$ARCHIVE"
           unzip -t "$ARCHIVE"
           mkdir -p extracted
           unzip -q "$ARCHIVE" -d extracted
           PROJECT_BUILD="$(find extracted -path '*/app/build.gradle' -type f | head -n 1)"
-          test -n "$PROJECT_BUILD"
+          if [ -z "$PROJECT_BUILD" ]; then
+            echo "::error::No Android app/build.gradle found in $ARCHIVE"
+            exit 1
+          fi
           PROJECT_DIR="$(dirname "$(dirname "$PROJECT_BUILD")")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Android project: $PROJECT_DIR"
