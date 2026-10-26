@@ -35,7 +35,7 @@ jobs:
       - name: Find and extract project
         run: |
           set -e
-          ARCHIVE="zxc2003-4-final.zip"
+          ARCHIVE="zxc2003-5-download.zip"
           if [ ! -f "$ARCHIVE" ]; then
             echo "::error::Latest project archive missing: $ARCHIVE. Refusing to build an older ZIP."
             exit 1
