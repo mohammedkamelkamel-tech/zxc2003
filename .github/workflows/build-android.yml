@@ -37,9 +37,11 @@ jobs:
           set -e
           ARCHIVE="al_kamel_distribution_project_fixed_pdf.zip"
           if [ ! -f "$ARCHIVE" ]; then
-            ARCHIVE="al_kamel_distribution_project_modified.zip"
+            echo "::error::Latest project archive missing: $ARCHIVE. Refusing to build an older ZIP."
+            exit 1
           fi
-          test -f "$ARCHIVE"
+          echo "Building only from: $ARCHIVE"
+          sha256sum "$ARCHIVE"
           unzip -t "$ARCHIVE"
           mkdir -p extracted
           unzip -q "$ARCHIVE" -d extracted
