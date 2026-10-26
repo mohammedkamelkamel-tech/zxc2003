@@ -32,10 +32,10 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      - name: Find and extract project
+      - name: Find and extract latest project
         run: |
           set -e
-          ARCHIVE="zxc2003-5-download.zip"
+          ARCHIVE="zxc2003-9-retry.zip"
           if [ ! -f "$ARCHIVE" ]; then
             echo "::error::Latest project archive missing: $ARCHIVE. Refusing to build an older ZIP."
             exit 1
