@@ -13,16 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract the requested baseline project and inspect restore code
+      - name: Extract and inspect backup restore code
         shell: bash
         run: |
           set -euo pipefail
-          ARCHIVE="zxc2003-15_9-full-backup-custody.zip"
-          test -f "$ARCHIVE"
-          unzip -t "$ARCHIVE"
           mkdir extracted
-          unzip -q "$ARCHIVE" -d extracted
-          echo "=== PROJECT FILES ==="
-          find extracted -type f \( -name '*.java' -o -name '*.kt' -o -name '*.xml' -o -name '*.gradle' \) | head -150
-          echo "=== BACKUP / RESTORE MATCHES ==="
-          grep -RniE --include='*.java' --include='*.kt' --include='*.xml' --include='*.gradle' 'ACTION_OPEN_DOCUMENT|ACTION_GET_CONTENT|OpenDocument|GetContent|restoreBackup|restore backup|استعادة|نسخة احتياطية|backup|restore' extracted | head -250 || true
+          unzip -q zxc2003-15_9-full-backup-custody.zip -d extracted
+          echo "=== BackupActivity.java ==="
+          sed -n '1,360p' extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java
+          echo "=== AndroidManifest.xml ==="
+          sed -n '1,120p' extracted/android_project/app/src/main/AndroidManifest.xml
+          echo "=== Database restore methods ==="
+          grep -nE 'restore|import|export|backup|insert|delete|transaction|SQLiteDatabase' extracted/android_project/app/src/main/java/com/alkamel/distribution/database/DatabaseHelper.java | head -180 || true
