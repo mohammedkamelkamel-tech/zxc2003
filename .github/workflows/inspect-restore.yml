@@ -13,15 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract and inspect backup restore code
+      - name: Print restore and database import methods
         shell: bash
         run: |
           set -euo pipefail
           mkdir extracted
           unzip -q zxc2003-15_9-full-backup-custody.zip -d extracted
-          echo "=== BackupActivity.java ==="
-          sed -n '1,360p' extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java
-          echo "=== AndroidManifest.xml ==="
-          sed -n '1,120p' extracted/android_project/app/src/main/AndroidManifest.xml
-          echo "=== Database restore methods ==="
-          grep -nE 'restore|import|export|backup|insert|delete|transaction|SQLiteDatabase' extracted/android_project/app/src/main/java/com/alkamel/distribution/database/DatabaseHelper.java | head -180 || true
+          echo "=== BackupActivity restore methods ==="
+          sed -n '220,380p' extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java
+          echo "=== DatabaseHelper import method ==="
+          sed -n '300,450p' extracted/android_project/app/src/main/java/com/alkamel/distribution/database/DatabaseHelper.java
