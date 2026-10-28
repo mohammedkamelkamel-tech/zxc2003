@@ -1,0 +1,75 @@
+name: Build fixed restore-picker APK
+
+on:
+  push:
+    branches:
+      - fix/restore-json-picker
+    paths:
+      - '.github/workflows/fix-restore-final.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/restore-json-picker
+      - name: Patch source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir extracted
+          unzip -q zxc2003-15_9-full-backup-custody.zip -d extracted
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java")
+          s = p.read_text(encoding="utf-8")
+          old = '            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "text/json", "text/plain"});'
+          if old not in s:
+              raise SystemExit("Expected MIME filter line not found; no source changes made.")
+          s = s.replace(old, '            // Do not restrict by MIME type: some Android file providers label .json as octet-stream.\n            // Validate selected contents as JSON before committing the restore.')
+          if 'intent.putExtra(Intent.EXTRA_MIME_TYPES' in s or 'intent.setType("*/*")' not in s:
+              raise SystemExit("Picker validation failed.")
+          p.write_text(s, encoding="utf-8")
+          print("Restore picker patched and validated.")
+          PY
+          (cd extracted && zip -qr ../zxc2003-15_13-restore-json-picker-fix.zip android_project)
+          unzip -t zxc2003-15_13-restore-json-picker-fix.zip
+      - name: Install Android SDK packages
+        run: |
+          set -e
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '7.6.4'
+      - name: Build debug APK
+        run: gradle --no-daemon -p extracted/android_project assembleDebug
+      - name: Commit fixed source archive
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add zxc2003-15_13-restore-json-picker-fix.zip
+          git commit -m "Fix backup JSON file picker MIME filtering" || echo "Archive unchanged"
+          git push origin HEAD:fix/restore-json-picker
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alkamel-restore-json-picker-fix
+          path: |
+            extracted/android_project/app/build/outputs/apk/debug/*.apk
+            zxc2003-15_13-restore-json-picker-fix.zip
+          if-no-files-found: error
