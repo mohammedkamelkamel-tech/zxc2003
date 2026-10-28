@@ -1,0 +1,19 @@
+name: Inspect database restore safety
+
+on:
+  push:
+    branches:
+      - fix/restore-json-picker
+    paths:
+      - '.github/workflows/inspect-db.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir extracted
+          unzip -q zxc2003-15_9-full-backup-custody.zip -d extracted
+          sed -n '340,435p' extracted/android_project/app/src/main/java/com/alkamel/distribution/database/DatabaseHelper.java
+          sed -n '250,360p' extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java
