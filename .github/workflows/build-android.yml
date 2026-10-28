@@ -36,7 +36,9 @@ jobs:
         run: |
           set -e
           # Explicitly prioritize the latest user-approved project.
-          if [ -f "zxc2003-15_9-full-backup-custody.zip" ]; then
+          if [ -f "zxc2003-15_10-colored-card-counts.zip" ]; then
+            ARCHIVE="zxc2003-15_10-colored-card-counts.zip"
+          elif [ -f "zxc2003-15_9-full-backup-custody.zip" ]; then
             ARCHIVE="zxc2003-15_9-full-backup-custody.zip"
           elif [ -f "zxc2003-15_8-dialog-theme-fix.zip" ]; then
             ARCHIVE="zxc2003-15_8-dialog-theme-fix.zip"
