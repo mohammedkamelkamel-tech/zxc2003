@@ -36,7 +36,9 @@ jobs:
         run: |
           set -e
           # Explicitly prioritize the latest user-approved project.
-          if [ -f "zxc2003-15_12-card-count-spacing-fix.zip" ]; then
+          if [ -f "zxc2003-15_13-restore-json-picker-fix.zip" ]; then
+            ARCHIVE="zxc2003-15_13-restore-json-picker-fix.zip"
+          elif [ -f "zxc2003-15_12-card-count-spacing-fix.zip" ]; then
             ARCHIVE="zxc2003-15_12-card-count-spacing-fix.zip"
           elif [ -f "zxc2003-15_11-card-count-spacing-fix.zip" ]; then
             ARCHIVE="zxc2003-15_11-card-count-spacing-fix.zip"
