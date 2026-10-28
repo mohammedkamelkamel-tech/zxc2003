@@ -1,0 +1,96 @@
+name: Fix backup JSON picker and build APK
+
+on:
+  push:
+    branches:
+      - fix/restore-json-picker
+    paths:
+      - '.github/workflows/fix-restore.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-build:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: fix/restore-json-picker
+
+      - name: Extract and patch the requested 15_9 project
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -t zxc2003-15_9-full-backup-custody.zip
+          mkdir extracted
+          unzip -q zxc2003-15_9-full-backup-custody.zip -d extracted
+          SOURCE="extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java"
+          test -f "$SOURCE"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java")
+          s = p.read_text(encoding="utf-8")
+          old = '            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "text/json", "text/plain"});'
+          if old not in s:
+              raise SystemExit("Expected JSON MIME filter line was not found; refusing to patch an unexpected source.")
+          s = s.replace(old, '            // Keep the picker unrestricted: some Android file providers label .json files as octet-stream,\n            // so EXTRA_MIME_TYPES can make a visible backup file impossible to select.\n            // The selected content is validated as JSON by importBackupJSON before any data is committed.')
+          p.write_text(s, encoding="utf-8")
+          if "EXTRA_MIME_TYPES" in s:
+              raise SystemExit("MIME restriction still present.")
+          print("Patched file picker: JSON files remain selectable regardless of provider MIME label.")
+          PY
+          grep -n -A7 -B4 'intent.setType("\*/*")' "$SOURCE"
+          if grep -q 'EXTRA_MIME_TYPES' "$SOURCE"; then exit 1; fi
+
+      - name: Verify Android SDK and install required packages
+        run: |
+          set -e
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '7.6.4'
+
+      - name: Build debug APK
+        run: gradle --no-daemon -p extracted/android_project assembleDebug
+
+      - name: Package patched project
+        run: |
+          set -euo pipefail
+          (cd extracted && zip -qr ../zxc2003-15_13-restore-json-picker-fix.zip android_project)
+          unzip -t zxc2003-15_13-restore-json-picker-fix.zip
+          sha256sum zxc2003-15_13-restore-json-picker-fix.zip extracted/android_project/app/build/outputs/apk/debug/*.apk
+
+      - name: Commit patched project archive to this fix branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add zxc2003-15_13-restore-json-picker-fix.zip
+          git commit -m "Fix JSON backup file selection in Android picker" || echo "No archive changes to commit"
+          git push origin HEAD:fix/restore-json-picker
+
+      - name: Upload APK and patched source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: alkamel-restore-json-picker-fix
+          path: |
+            extracted/android_project/app/build/outputs/apk/debug/*.apk
+            zxc2003-15_13-restore-json-picker-fix.zip
+          if-no-files-found: error
