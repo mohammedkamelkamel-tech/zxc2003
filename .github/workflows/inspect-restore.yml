@@ -1,0 +1,28 @@
+name: Inspect backup restore implementation
+
+on:
+  push:
+    branches:
+      - fix/restore-json-picker
+    paths:
+      - '.github/workflows/inspect-restore.yml'
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract the requested baseline project and inspect restore code
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="zxc2003-15_9-full-backup-custody.zip"
+          test -f "$ARCHIVE"
+          unzip -t "$ARCHIVE"
+          mkdir extracted
+          unzip -q "$ARCHIVE" -d extracted
+          echo "=== PROJECT FILES ==="
+          find extracted -type f \( -name '*.java' -o -name '*.kt' -o -name '*.xml' -o -name '*.gradle' \) | head -150
+          echo "=== BACKUP / RESTORE MATCHES ==="
+          grep -RniE --include='*.java' --include='*.kt' --include='*.xml' --include='*.gradle' 'ACTION_OPEN_DOCUMENT|ACTION_GET_CONTENT|OpenDocument|GetContent|restoreBackup|restore backup|استعادة|نسخة احتياطية|backup|restore' extracted | head -250 || true
