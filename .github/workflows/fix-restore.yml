@@ -41,7 +41,7 @@ jobs:
               raise SystemExit("Expected JSON MIME filter line was not found; refusing to patch an unexpected source.")
           s = s.replace(old, '            // Keep the picker unrestricted: some Android file providers label .json files as octet-stream,\n            // so EXTRA_MIME_TYPES can make a visible backup file impossible to select.\n            // The selected content is validated as JSON by importBackupJSON before any data is committed.')
           p.write_text(s, encoding="utf-8")
-          if "EXTRA_MIME_TYPES" in s:
+          if "intent.putExtra(Intent.EXTRA_MIME_TYPES" in s:
               raise SystemExit("MIME restriction still present.")
           print("Patched file picker: JSON files remain selectable regardless of provider MIME label.")
           PY
