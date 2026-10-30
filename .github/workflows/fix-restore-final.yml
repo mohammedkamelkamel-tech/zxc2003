@@ -1,4 +1,4 @@
-name: Build AlKamel 15.10 - full backup custody
+name: Build AlKamel 15.10 - fix page 3 shop row and total overlap
 
 on:
   push:
@@ -53,8 +53,8 @@ jobs:
           indent = amount_line[:len(amount_line)-len(amount_line.lstrip())]
           changed = amount_line.replace("rowY+23", "rowY+21").replace("rowY + 23", "rowY + 21")
           section = section.replace(amount_line, changed + "\n" + indent + "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);", 1)
-          section = section.replace("rowY+43", "rowY+56").replace("rowY + 43", "rowY + 56")
-          section = section.replace("rowY=yy+row*47", "rowY=yy+row*58").replace("rowY = yy + row * 47", "rowY = yy + row * 58")
+          section = section.replace("rowY+43,x+colWidth,rowY+43", "rowY+56,x+colWidth,rowY+56").replace("rowY + 43,x+colWidth,rowY + 43", "rowY + 56,x+colWidth,rowY + 56")
+          section = section.replace("rowY=yy+row*47", "rowY=yy+row*68").replace("rowY = yy + row * 47", "rowY = yy + row * 68")
           r = r[:start] + section + r[end:]
           helper = '''
           /** Display per-shop card counts in the fixed 100/200/250/500 order. */
@@ -84,7 +84,7 @@ jobs:
           if anchor not in r:
               raise SystemExit("PDF helper insertion point not found.")
           r = r.replace(anchor, helper + "\n" + anchor, 1)
-          if "drawColoredCardCounts(canvas, x, rowY + 56, colWidth, a);" not in r:
+          if "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);" not in r:
               raise SystemExit("Page 3 count row validation failed.")
           report.write_text(r, encoding="utf-8")
           print("Patched only 15.9: Android 7 restore picker + per-shop colored card counts on page 3.")
