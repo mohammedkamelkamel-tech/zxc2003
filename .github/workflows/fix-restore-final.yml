@@ -90,7 +90,7 @@ jobs:
               if anchor not in r:
                   raise SystemExit("PDF helper insertion point not found.")
               r = r.replace(anchor, helper + "\n" + anchor, 1)
-          if "drawColoredCardCounts(canvas, x, rowY + 43, a);" not in r:
+          if "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);" not in r:
               raise SystemExit("Page-3 colored counts validation failed.")
           report.write_text(r, encoding="utf-8")
           print("Validated: Android 7 JSON picker retained; page 3 now shows colored 100-200-250-500 counts under each shop value.")
