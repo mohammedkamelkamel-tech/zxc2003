@@ -56,7 +56,7 @@ jobs:
           indent = lines[amount_i][:len(lines[amount_i])-len(lines[amount_i].lstrip())]
           amount_line = lines[amount_i].replace("rowY+23", "rowY+21").replace("rowY + 23", "rowY + 21")
           lines[amount_i] = amount_line
-          lines.insert(amount_i + 1, indent + "drawColoredCardCounts(canvas, x, rowY + 43, a);")
+          lines.insert(amount_i + 1, indent + "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);")
           line_i = next((i for i in range(amount_i + 2, len(lines)) if "canvas.drawLine(x,rowY+" in lines[i] or "canvas.drawLine(x, rowY +" in lines[i]), None)
           if line_i is None:
               raise SystemExit("Page-3 separator line not found.")
