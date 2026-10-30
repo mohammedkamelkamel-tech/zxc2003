@@ -40,15 +40,30 @@ jobs:
 
           report = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/ReportActivity.java")
           r = report.read_text(encoding="utf-8")
-          old_row = '''                        drawPdfText(canvas,e.getKey(),x,rowY,colWidth,title);
-                        drawPdfText(canvas,String.format(java.util.Locale.US,"%,d",amount)+" ريال",x,rowY+23,colWidth,total);
-                        canvas.drawLine(x,rowY+43,x+colWidth,rowY+43,line);'''
-          new_row = '''                        drawPdfText(canvas,e.getKey(),x,rowY,colWidth,title);
-                        drawPdfText(canvas,String.format(java.util.Locale.US,"%,d",amount)+" ريال",x,rowY+21,colWidth,total);
-                        drawColoredCardCounts(canvas, x, rowY + 43, a);
-                        canvas.drawLine(x,rowY+56,x+colWidth,rowY+56,line);'''
-          if old_row not in r:
-              raise SystemExit("Page-3 PDF row did not match the expected source; no unrelated code was changed.")
+          # Patch only the page-3 per-shop rows; keep pages 1-2 and all data logic untouched.
+          page3_start = r.find("// Page 3 and any overflow pages")
+          if page3_start < 0:
+              raise SystemExit("Page-3 PDF section not found.")
+          page3_end = r.find("ByteArrayOutputStream out", page3_start)
+          if page3_end < 0:
+              raise SystemExit("PDF output boundary not found.")
+          page3 = r[page3_start:page3_end]
+          lines = page3.splitlines()
+          amount_i = next((i for i,line in enumerate(lines) if "drawPdfText" in line and "amount" in line), None)
+          stride_i = next((i for i,line in enumerate(lines) if "rowY=yy+row*" in line or "rowY = yy + row *" in line), None)
+          if amount_i is None or stride_i is None:
+              raise SystemExit("Could not identify page-3 amount row and spacing.")
+          indent = lines[amount_i][:len(lines[amount_i])-len(lines[amount_i].lstrip())]
+          amount_line = lines[amount_i].replace("rowY+23", "rowY+21").replace("rowY + 23", "rowY + 21")
+          lines[amount_i] = amount_line
+          lines.insert(amount_i + 1, indent + "drawColoredCardCounts(canvas, x, rowY + 43, a);")
+          line_i = next((i for i in range(amount_i + 2, len(lines)) if "canvas.drawLine(x,rowY+" in lines[i] or "canvas.drawLine(x, rowY +" in lines[i]), None)
+          if line_i is None:
+              raise SystemExit("Page-3 separator line not found.")
+          lines[line_i] = lines[line_i].replace("rowY+43", "rowY+56").replace("rowY + 43", "rowY + 56")
+          lines[stride_i] = lines[stride_i].replace("row*47", "row*58").replace("row * 47", "row * 58")
+          page3 = "\n".join(lines) + "\n"
+          r = r[:page3_start] + page3 + r[page3_end:]
           if "private void drawColoredCardCounts(" not in r:
               helper = '''
           /** Draw the four per-shop card counts in fixed 100/200/250/500 order. */
@@ -71,11 +86,12 @@ jobs:
               }
           }
           '''
-              anchor = '''    private void exportReportFile() {'''
+              anchor = '    private void exportReportFile() {'
               if anchor not in r:
                   raise SystemExit("PDF helper insertion point not found.")
-              r = r.replace(anchor, helper + "\n" + anchor, 1)
-          r = r.replace(old_row, new_row, 1)
+              r = r.replace(anchor, helper + "\\n" + anchor, 1)
+          if "drawColoredCardCounts(canvas, x, rowY + 43, a);" not in r:
+              raise SystemExit("Page-3 colored counts validation failed.")
           report.write_text(r, encoding="utf-8")
           print("Validated: Android 7 JSON picker retained; page 3 now shows colored 100-200-250-500 counts under each shop value.")
           PY
