@@ -55,6 +55,7 @@ jobs:
           section = section.replace(amount_line, changed + "\n" + indent + "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);", 1)
           section = section.replace("rowY+43,x+colWidth,rowY+43", "rowY+56,x+colWidth,rowY+56").replace("rowY + 43,x+colWidth,rowY + 43", "rowY + 56,x+colWidth,rowY + 56")
           section = section.replace("rowY=yy+row*47", "rowY=yy+row*68").replace("rowY = yy + row * 47", "rowY = yy + row * 68")
+          section = section.replace("int ty=Math.min(h-55,yy+rows*47+18);", "int ty=Math.min(h-35,yy+rows*68+28);")
           r = r[:start] + section + r[end:]
           helper = '''
           /** Display per-shop card counts in the fixed 100/200/250/500 order. */
