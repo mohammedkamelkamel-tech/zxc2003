@@ -1,4 +1,4 @@
-name: Build fixed restore-picker APK
+name: Build AlKamel 15.14 - preserve restore fix and restore page-3 card counts
 
 on:
   push:
@@ -21,27 +21,66 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/restore-json-picker
-      - name: Patch source archive
+      - name: Patch latest 15.12 project only
         shell: bash
         run: |
           set -euo pipefail
           mkdir extracted
-          unzip -q zxc2003-15_9-full-backup-custody.zip -d extracted
+          unzip -q zxc2003-15_12-card-count-spacing-fix.zip -d extracted
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java")
-          s = p.read_text(encoding="utf-8")
-          old = '            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "text/json", "text/plain"});'
-          if old not in s:
-              raise SystemExit("Expected MIME filter line not found; no source changes made.")
-          s = s.replace(old, '            // Do not restrict by MIME type: some Android file providers label .json as octet-stream.\n            // Validate selected contents as JSON before committing the restore.')
+          backup = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java")
+          s = backup.read_text(encoding="utf-8")
+          old_mime = '            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "text/json", "text/plain"});'
+          if old_mime in s:
+              s = s.replace(old_mime, '            // Do not restrict MIME: some Android 7 file providers label JSON as octet-stream.\n            // The selected content is validated as JSON before import.')
           if 'intent.putExtra(Intent.EXTRA_MIME_TYPES' in s or 'intent.setType("*/*")' not in s:
-              raise SystemExit("Picker validation failed.")
-          p.write_text(s, encoding="utf-8")
-          print("Restore picker patched and validated.")
+              raise SystemExit("Restore picker validation failed; no APK will be built.")
+          backup.write_text(s, encoding="utf-8")
+
+          report = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/ReportActivity.java")
+          r = report.read_text(encoding="utf-8")
+          old_row = '''                        drawPdfText(canvas,e.getKey(),x,rowY,colWidth,title);
+                        drawPdfText(canvas,String.format(java.util.Locale.US,"%,d",amount)+" ريال",x,rowY+23,colWidth,total);
+                        canvas.drawLine(x,rowY+43,x+colWidth,rowY+43,line);'''
+          new_row = '''                        drawPdfText(canvas,e.getKey(),x,rowY,colWidth,title);
+                        drawPdfText(canvas,String.format(java.util.Locale.US,"%,d",amount)+" ريال",x,rowY+21,colWidth,total);
+                        drawColoredCardCounts(canvas, x, rowY + 43, a);
+                        canvas.drawLine(x,rowY+56,x+colWidth,rowY+56,line);'''
+          if old_row not in r:
+              raise SystemExit("Page-3 PDF row did not match the expected source; no unrelated code was changed.")
+          if "private void drawColoredCardCounts(" not in r:
+              helper = '''
+          /** Draw the four per-shop card counts in fixed 100/200/250/500 order. */
+          private void drawColoredCardCounts(android.graphics.Canvas canvas, int x, int baseline, int[] counts) {
+              int[] colors = new int[]{Color.rgb(192, 57, 43), Color.rgb(142, 68, 173), Color.rgb(22, 160, 90), Color.rgb(20, 170, 205)};
+              android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+              paint.setTextSize(12f);
+              paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+              float cursor = x;
+              for (int i = 0; i < 4; i++) {
+                  paint.setColor(colors[i]);
+                  String value = String.valueOf(counts[i]);
+                  canvas.drawText(value, cursor, baseline, paint);
+                  cursor += paint.measureText(value);
+                  if (i < 3) {
+                      paint.setColor(Color.rgb(100, 116, 139));
+                      canvas.drawText("-", cursor, baseline, paint);
+                      cursor += paint.measureText("-");
+                  }
+              }
+          }
+          '''
+              anchor = '''    private void exportReportFile() {'''
+              if anchor not in r:
+                  raise SystemExit("PDF helper insertion point not found.")
+              r = r.replace(anchor, helper + "\n" + anchor, 1)
+          r = r.replace(old_row, new_row, 1)
+          report.write_text(r, encoding="utf-8")
+          print("Validated: Android 7 JSON picker retained; page 3 now shows colored 100-200-250-500 counts under each shop value.")
           PY
-          (cd extracted && zip -qr ../zxc2003-15_13-restore-json-picker-fix.zip android_project)
-          unzip -t zxc2003-15_13-restore-json-picker-fix.zip
+          (cd extracted && zip -qr ../zxc2003-15_14-page3-counts-restore-fix.zip android_project)
+          unzip -t zxc2003-15_14-page3-counts-restore-fix.zip
       - name: Install Android SDK packages
         run: |
           set -e
@@ -58,18 +97,18 @@ jobs:
           gradle-version: '7.6.4'
       - name: Build debug APK
         run: gradle --no-daemon -p extracted/android_project assembleDebug
-      - name: Commit fixed source archive
+      - name: Commit fixed project archive
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add zxc2003-15_13-restore-json-picker-fix.zip
-          git commit -m "Fix backup JSON file picker MIME filtering" || echo "Archive unchanged"
+          git add zxc2003-15_14-page3-counts-restore-fix.zip
+          git commit -m "Restore colored shop card counts on PDF page three" || echo "Archive unchanged"
           git push origin HEAD:fix/restore-json-picker
       - uses: actions/upload-artifact@v4
         with:
-          name: alkamel-restore-json-picker-fix
+          name: alkamel-15-14-page3-counts-restore-fix
           path: |
             extracted/android_project/app/build/outputs/apk/debug/*.apk
-            zxc2003-15_13-restore-json-picker-fix.zip
+            zxc2003-15_14-page3-counts-restore-fix.zip
           if-no-files-found: error
