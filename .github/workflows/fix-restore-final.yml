@@ -40,7 +40,7 @@ jobs:
 
           report = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/ReportActivity.java")
           r = report.read_text(encoding="utf-8")
-          # Patch only the page-3 per-shop rows; keep pages 1-2 and all data logic untouched.
+          # Keep the page-3 colored-count row already present in 15.12 unchanged.
           page3_start = r.find("// Page 3 and any overflow pages")
           if page3_start < 0:
               raise SystemExit("Page-3 PDF section not found.")
@@ -48,50 +48,11 @@ jobs:
           if page3_end < 0:
               raise SystemExit("PDF output boundary not found.")
           page3 = r[page3_start:page3_end]
-          lines = page3.splitlines()
-          amount_i = next((i for i,line in enumerate(lines) if "drawPdfText" in line and "amount" in line), None)
-          stride_i = next((i for i,line in enumerate(lines) if "rowY=yy+row*" in line or "rowY = yy + row *" in line), None)
-          if amount_i is None or stride_i is None:
-              raise SystemExit("Could not identify page-3 amount row and spacing.")
-          indent = lines[amount_i][:len(lines[amount_i])-len(lines[amount_i].lstrip())]
-          amount_line = lines[amount_i].replace("rowY+23", "rowY+21").replace("rowY + 23", "rowY + 21")
-          lines[amount_i] = amount_line
-          lines.insert(amount_i + 1, indent + "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);")
-          line_i = next((i for i in range(amount_i + 2, len(lines)) if "canvas.drawLine(x,rowY+" in lines[i] or "canvas.drawLine(x, rowY +" in lines[i]), None)
-          if line_i is None:
-              raise SystemExit("Page-3 separator line not found.")
-          lines[line_i] = lines[line_i].replace("rowY+43", "rowY+56").replace("rowY + 43", "rowY + 56")
-          lines[stride_i] = lines[stride_i].replace("row*47", "row*58").replace("row * 47", "row * 58")
-          page3 = "\n".join(lines) + "\n"
-          r = r[:page3_start] + page3 + r[page3_end:]
-          if "private void drawColoredCardCounts(" not in r:
-              helper = '''
-          /** Draw the four per-shop card counts in fixed 100/200/250/500 order. */
-          private void drawColoredCardCounts(android.graphics.Canvas canvas, int x, int baseline, int[] counts) {
-              int[] colors = new int[]{Color.rgb(192, 57, 43), Color.rgb(142, 68, 173), Color.rgb(22, 160, 90), Color.rgb(20, 170, 205)};
-              android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-              paint.setTextSize(12f);
-              paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
-              float cursor = x;
-              for (int i = 0; i < 4; i++) {
-                  paint.setColor(colors[i]);
-                  String value = String.valueOf(counts[i]);
-                  canvas.drawText(value, cursor, baseline, paint);
-                  cursor += paint.measureText(value);
-                  if (i < 3) {
-                      paint.setColor(Color.rgb(100, 116, 139));
-                      canvas.drawText("-", cursor, baseline, paint);
-                      cursor += paint.measureText("-");
-                  }
-              }
-          }
-          '''
-              anchor = '    private void exportReportFile() {'
-              if anchor not in r:
-                  raise SystemExit("PDF helper insertion point not found.")
-              r = r.replace(anchor, helper + "\n" + anchor, 1)
-          if "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);" not in r:
-              raise SystemExit("Page-3 colored counts validation failed.")
+          if "drawColoredCardCounts(" not in page3:
+              raise SystemExit("The 15.12 page-3 colored card-count row is missing; refusing to alter the PDF.")
+          if "drawColoredCardCounts(canvas, x, rowY+57, colWidth, a);" not in page3 and "drawColoredCardCounts(canvas, x, rowY + 57, colWidth, a);" not in page3:
+              raise SystemExit("The expected existing page-3 card-count row was changed; refusing to build.")
+          print("Confirmed: latest 15.12 already contains colored per-shop counts on page 3; preserved without modification.")
           report.write_text(r, encoding="utf-8")
           print("Validated: Android 7 JSON picker retained; page 3 now shows colored 100-200-250-500 counts under each shop value.")
           PY
