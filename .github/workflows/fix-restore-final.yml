@@ -1,4 +1,4 @@
-name: Build AlKamel 15.10 - fix page 3 shop row and total overlap
+name: Build AlKamel 15.11 - full backup custody page-3 layout fix
 
 on:
   push:
@@ -90,7 +90,7 @@ jobs:
           report.write_text(r, encoding="utf-8")
           print("Patched only 15.9: Android 7 restore picker + per-shop colored card counts on page 3.")
           PY
-          (cd extracted && zip -qr ../zxc2003-15_10-full-backup-custody.zip android_project)
+          (cd extracted && zip -qr ../zxc2003-15_11-full-backup-custody.zip android_project)
           unzip -t zxc2003-15_14-page3-counts-restore-fix.zip
       - name: Install Android SDK packages
         run: |
@@ -118,7 +118,7 @@ jobs:
           git push origin HEAD:fix/restore-json-picker
       - uses: actions/upload-artifact@v4
         with:
-          name: alkamel-15-10-full-backup-custody
+          name: alkamel-15-11-full-backup-custody
           path: |
             extracted/android_project/app/build/outputs/apk/debug/*.apk
             zxc2003-15_14-page3-counts-restore-fix.zip
