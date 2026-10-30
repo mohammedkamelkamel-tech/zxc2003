@@ -21,40 +21,73 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/restore-json-picker
-      - name: Patch latest 15.12 project only
+      - name: Patch the user-selected latest 15.9 project only
         shell: bash
         run: |
           set -euo pipefail
           mkdir extracted
-          unzip -q zxc2003-15_12-card-count-spacing-fix.zip -d extracted
+          unzip -q zxc2003-15_9-full-backup-custody.zip -d extracted
           python3 - <<'PY'
           from pathlib import Path
           backup = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/BackupActivity.java")
           s = backup.read_text(encoding="utf-8")
           old_mime = '            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "text/json", "text/plain"});'
           if old_mime in s:
-              s = s.replace(old_mime, '            // Do not restrict MIME: some Android 7 file providers label JSON as octet-stream.\n            // The selected content is validated as JSON before import.')
+              s = s.replace(old_mime, '            // Do not restrict MIME: some Android 7 file providers label JSON as octet-stream.\\n            // The selected content is validated as JSON before import.')
           if 'intent.putExtra(Intent.EXTRA_MIME_TYPES' in s or 'intent.setType("*/*")' not in s:
-              raise SystemExit("Restore picker validation failed; no APK will be built.")
+              raise SystemExit("Restore picker validation failed.")
           backup.write_text(s, encoding="utf-8")
 
           report = Path("extracted/android_project/app/src/main/java/com/alkamel/distribution/ReportActivity.java")
           r = report.read_text(encoding="utf-8")
-          # Keep the page-3 colored-count row already present in 15.12 unchanged.
-          page3_start = r.find("// Page 3 and any overflow pages")
-          if page3_start < 0:
-              raise SystemExit("Page-3 PDF section not found.")
-          page3_end = r.find("ByteArrayOutputStream out", page3_start)
-          if page3_end < 0:
-              raise SystemExit("PDF output boundary not found.")
-          page3 = r[page3_start:page3_end]
-          if "drawColoredCardCounts(" not in page3:
-              raise SystemExit("The 15.12 page-3 colored card-count row is missing; refusing to alter the PDF.")
-          if "drawColoredCardCounts(canvas, x, rowY+57, colWidth, a);" not in page3 and "drawColoredCardCounts(canvas, x, rowY + 57, colWidth, a);" not in page3:
-              raise SystemExit("The expected existing page-3 card-count row was changed; refusing to build.")
-          print("Confirmed: latest 15.12 already contains colored per-shop counts on page 3; preserved without modification.")
+          start = r.find("// Page 3 and any overflow pages")
+          end = r.find("ByteArrayOutputStream out", start)
+          if start < 0 or end < 0:
+              raise SystemExit("Could not locate page 3 PDF section.")
+          section = r[start:end]
+          if "drawColoredCardCounts(" in section:
+              raise SystemExit("Page 3 already has a counts renderer; refusing to duplicate it.")
+          amount_line = next((line for line in section.splitlines() if "drawPdfText" in line and "amount" in line), None)
+          if amount_line is None:
+              raise SystemExit("Page 3 amount line not found.")
+          indent = amount_line[:len(amount_line)-len(amount_line.lstrip())]
+          changed = amount_line.replace("rowY+23", "rowY+21").replace("rowY + 23", "rowY + 21")
+          section = section.replace(amount_line, changed + "\\n" + indent + "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);", 1)
+          section = section.replace("rowY+43", "rowY+56").replace("rowY + 43", "rowY + 56")
+          section = section.replace("rowY=yy+row*47", "rowY=yy+row*58").replace("rowY = yy + row * 47", "rowY = yy + row * 58")
+          r = r[:start] + section + r[end:]
+          helper = '''
+          /** Display per-shop card counts in the fixed 100/200/250/500 order. */
+          private void drawColoredCardCounts(android.graphics.Canvas canvas, int x, int baseline, int colWidth, int[] counts) {
+              int[] colors = new int[]{Color.rgb(192,57,43), Color.rgb(142,68,173), Color.rgb(22,160,90), Color.rgb(20,170,205)};
+              android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+              p.setTextSize(11f);
+              p.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+              String[] labels = new String[]{String.valueOf(counts[0]), String.valueOf(counts[1]), String.valueOf(counts[2]), String.valueOf(counts[3])};
+              float totalWidth = 0;
+              for (int i=0;i<4;i++) totalWidth += p.measureText(labels[i]);
+              totalWidth += p.measureText(" - ") * 3;
+              float xPos = x + Math.max(0, (colWidth-totalWidth)/2f);
+              for (int i=0;i<4;i++) {
+                  p.setColor(colors[i]);
+                  canvas.drawText(labels[i], xPos, baseline, p);
+                  xPos += p.measureText(labels[i]);
+                  if (i<3) {
+                      p.setColor(Color.DKGRAY);
+                      canvas.drawText(" - ", xPos, baseline, p);
+                      xPos += p.measureText(" - ");
+                  }
+              }
+          }
+          '''
+          anchor = "    private int drawPdfHeader("
+          if anchor not in r:
+              raise SystemExit("PDF helper insertion point not found.")
+          r = r.replace(anchor, helper + "\\n" + anchor, 1)
+          if "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);" not in r:
+              raise SystemExit("Page 3 count row validation failed.")
           report.write_text(r, encoding="utf-8")
-          print("Validated: Android 7 JSON picker retained; page 3 now shows colored 100-200-250-500 counts under each shop value.")
+          print("Patched only 15.9: Android 7 restore picker + per-shop colored card counts on page 3.")
           PY
           (cd extracted && zip -qr ../zxc2003-15_14-page3-counts-restore-fix.zip android_project)
           unzip -t zxc2003-15_14-page3-counts-restore-fix.zip
