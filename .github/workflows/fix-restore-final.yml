@@ -84,7 +84,7 @@ jobs:
           if anchor not in r:
               raise SystemExit("PDF helper insertion point not found.")
           r = r.replace(anchor, helper + "\n" + anchor, 1)
-          if "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);" not in r:
+          if "drawColoredCardCounts(canvas, x, rowY + 56, colWidth, a);" not in r:
               raise SystemExit("Page 3 count row validation failed.")
           report.write_text(r, encoding="utf-8")
           print("Patched only 15.9: Android 7 restore picker + per-shop colored card counts on page 3.")
