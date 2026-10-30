@@ -1,4 +1,4 @@
-name: Build AlKamel 15.14 - preserve restore fix and restore page-3 card counts
+name: Build AlKamel 15.10 - full backup custody
 
 on:
   push:
@@ -89,7 +89,7 @@ jobs:
           report.write_text(r, encoding="utf-8")
           print("Patched only 15.9: Android 7 restore picker + per-shop colored card counts on page 3.")
           PY
-          (cd extracted && zip -qr ../zxc2003-15_14-page3-counts-restore-fix.zip android_project)
+          (cd extracted && zip -qr ../zxc2003-15_10-full-backup-custody.zip android_project)
           unzip -t zxc2003-15_14-page3-counts-restore-fix.zip
       - name: Install Android SDK packages
         run: |
@@ -113,11 +113,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add zxc2003-15_14-page3-counts-restore-fix.zip
-          git commit -m "Restore colored shop card counts on PDF page three" || echo "Archive unchanged"
+          git commit -m "Build 15.10 full backup custody with restore and page-3 counts fixes" || echo "Archive unchanged"
           git push origin HEAD:fix/restore-json-picker
       - uses: actions/upload-artifact@v4
         with:
-          name: alkamel-15-14-page3-counts-restore-fix
+          name: alkamel-15-10-full-backup-custody
           path: |
             extracted/android_project/app/build/outputs/apk/debug/*.apk
             zxc2003-15_14-page3-counts-restore-fix.zip
