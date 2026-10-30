@@ -33,7 +33,7 @@ jobs:
           s = backup.read_text(encoding="utf-8")
           old_mime = '            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/json", "text/json", "text/plain"});'
           if old_mime in s:
-              s = s.replace(old_mime, '            // Do not restrict MIME: some Android 7 file providers label JSON as octet-stream.\\n            // The selected content is validated as JSON before import.')
+              s = s.replace(old_mime, '            // Do not restrict MIME: some Android 7 file providers label JSON as octet-stream.\n            // The selected content is validated as JSON before import.')
           if 'intent.putExtra(Intent.EXTRA_MIME_TYPES' in s or 'intent.setType("*/*")' not in s:
               raise SystemExit("Restore picker validation failed.")
           backup.write_text(s, encoding="utf-8")
@@ -52,7 +52,7 @@ jobs:
               raise SystemExit("Page 3 amount line not found.")
           indent = amount_line[:len(amount_line)-len(amount_line.lstrip())]
           changed = amount_line.replace("rowY+23", "rowY+21").replace("rowY + 23", "rowY + 21")
-          section = section.replace(amount_line, changed + "\\n" + indent + "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);", 1)
+          section = section.replace(amount_line, changed + "\n" + indent + "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);", 1)
           section = section.replace("rowY+43", "rowY+56").replace("rowY + 43", "rowY + 56")
           section = section.replace("rowY=yy+row*47", "rowY=yy+row*58").replace("rowY = yy + row * 47", "rowY = yy + row * 58")
           r = r[:start] + section + r[end:]
@@ -83,7 +83,7 @@ jobs:
           anchor = "    private int drawPdfHeader("
           if anchor not in r:
               raise SystemExit("PDF helper insertion point not found.")
-          r = r.replace(anchor, helper + "\\n" + anchor, 1)
+          r = r.replace(anchor, helper + "\n" + anchor, 1)
           if "drawColoredCardCounts(canvas, x, rowY + 43, colWidth, a);" not in r:
               raise SystemExit("Page 3 count row validation failed.")
           report.write_text(r, encoding="utf-8")
